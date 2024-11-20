@@ -3,7 +3,7 @@
 ## Langkah-Langkah Instalasi
 
 1. **Instal Python (Versi 3.12)**  
-   Pastikan Python versi **3.12** terinstal di perangkat lokal Anda. Jika belum, Anda dapat mengunduhnya dari [situs resmi Python]([https://www.python.org/downloads/](https://www.python.org/downloads/release/python-3127/)).
+   Pastikan Python versi **3.12** terinstal di perangkat lokal Anda. Jika belum, Anda dapat mengunduhnya dari [situs resmi Python](https://www.python.org/downloads/](https://www.python.org/downloads/release/python-3127/)).
 
 2. **Unduh File Model**  
    Unduh file model `.h5` yang dibutuhkan dari tautan berikut:  
