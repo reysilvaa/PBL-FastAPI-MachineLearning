@@ -7,7 +7,7 @@
 
 2. **Unduh File Model**  
    Unduh file model `.h5` yang dibutuhkan dari tautan berikut:  
-   [Unduh file `.h5`](https://drive.google.com/file/d/1jYZ1oEWbjPc5OHQciIC3ICrTfabYTJt7/view?usp=sharing)
+   https://drive.google.com/file/d/1jYZ1oEWbjPc5OHQciIC3ICrTfabYTJt7/view?usp=sharing
 
 3. **Pindahkan File Model**  
    Setelah mengunduh file `.h5`, pindahkan file tersebut ke dalam folder **Model** di direktori proyek Anda.
