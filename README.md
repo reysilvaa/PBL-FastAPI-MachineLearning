@@ -4,8 +4,8 @@
 
 1. **Instal Python (Versi 3.12)**  
    Pastikan Python versi **3.12** terinstal di perangkat lokal Anda. Jika belum, Anda dapat mengunduhnya dari situsnya Python.
-   <li> Windows : https://www.python.org/ftp/python/3.12.7/python-3.12.7-amd64.exe</li>
-   <li> MacOS : https://www.python.org/ftp/python/3.12.7/python-3.12.7-macos11.pkg</li>
+      <li> Windows : https://www.python.org/ftp/python/3.12.7/python-3.12.7-amd64.exe</li>
+      <li> MacOS : https://www.python.org/ftp/python/3.12.7/python-3.12.7-macos11.pkg</li>
 
 3. **Unduh File Model**  
    Unduh file model `.h5` yang dibutuhkan dari tautan berikut:  
