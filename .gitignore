@@ -1,1 +1,4 @@
-model/acne_classification_model.h5
+MODEL_PATH = model/model3
+MODEL_PATH = model/model2
+MODEL_PATH = model/model
+.env
