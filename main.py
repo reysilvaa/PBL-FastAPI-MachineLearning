@@ -1,31 +1,41 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import requests
-import numpy as np
-from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing.image import load_img, img_to_array
+from ultralytics import YOLO
+import cv2
 import os
+import numpy as np
 
 # FastAPI instance
 app = FastAPI()
 
-# Load model
-MODEL_PATH = os.getenv("MODEL_PATH", os.path.join("model", "acne_classification_model.h5"))
+# Load YOLO model
+# model1.pt = akurasi tinggi (56.70% an)
+# model.pt = akurasi lebih rendah (lupa pokok dibawah e model1.pt)
+MODEL_PATH = os.getenv("MODEL_PATH", os.path.join("model", "model1.pt"))
 if not os.path.exists(MODEL_PATH):
-    raise FileNotFoundError(f"Model not found at {MODEL_PATH}")
+    raise FileNotFoundError(f"YOLO model not found at {MODEL_PATH}")
 
-model = load_model(MODEL_PATH)
+model = YOLO(MODEL_PATH)
 
 # Define Pydantic model for receiving the input
 class ImageRequest(BaseModel):
     image_url: str
 
-def preprocess_image(image_path):
-    """Preprocess image to match model input."""
-    img = load_img(image_path, target_size=(224, 224))
-    img_array = img_to_array(img)
-    img_array = np.expand_dims(img_array, axis=0)
-    return img_array / 255.0  # Normalize
+def process_yolo_predictions(image_path):
+    """Run YOLO model and process predictions."""
+    # results = model.predict(source=image_path, imgsz=640, conf=0.1)
+    results = model.predict(source=image_path, imgsz=640)
+    detections = results[0].boxes
+
+    # Count and confidence for analysis
+    acne_count = len(detections)
+    confidence_scores = [float(box.conf[0].cpu().numpy()) for box in detections]
+
+    # Average confidence for the detections
+    avg_confidence = np.mean(confidence_scores) if confidence_scores else 0.0
+
+    return acne_count, avg_confidence
 
 @app.post("/predict")
 async def predict_skin_condition(request: ImageRequest):
@@ -39,16 +49,26 @@ async def predict_skin_condition(request: ImageRequest):
         with open(temp_file, "wb") as f:
             f.write(response.content)
 
-        # Preprocess and predict
-        img_array = preprocess_image(temp_file)
-        prediction = model.predict(img_array)
-        predicted_class = int(np.argmax(prediction[0]))
-        confidence = float(prediction[0][predicted_class])
+        # Process image through YOLO model
+        acne_count, avg_confidence = process_yolo_predictions(temp_file)
 
         # Cleanup temp file
         os.remove(temp_file)
 
-        return {"class": predicted_class, "confidence": confidence}
+        # Determine skin condition category
+        if acne_count <= 5:
+            condition = "Rendah"
+        elif 6 <= acne_count <= 15:
+            condition = "Sedang"
+        elif 16 <= acne_count <= 30:
+            condition = "Parah"
+        else:
+            condition = "Sangat Parah"
+
+        return {
+            "acne_count": acne_count,
+             "condition": condition
+        }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
