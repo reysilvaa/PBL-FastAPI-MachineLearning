@@ -25,52 +25,89 @@ class ImageRequest(BaseModel):
     image_url: str
 
 def draw_predictions(image_path, boxes):
-    """Draw bounding boxes on image and return annotated image."""
+    """Create elegant bounding box visualization."""
     img = cv2.imread(image_path)
+    overlay = img.copy()
+    
+    # Design constants
+    BOX_COLOR = (255, 128, 0)
+    TEXT_COLOR = (255, 255, 255)  # White text
+    OVERLAY_ALPHA = 0.2
+    FONT = cv2.FONT_HERSHEY_SIMPLEX
+    
     for box in boxes:
         x1, y1, x2, y2 = map(int, box.xyxy[0].cpu().numpy())
         conf = float(box.conf[0].cpu().numpy())
-        cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
-        cv2.putText(img, f'{conf:.2f}', (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        
+        # Draw semi-transparent overlay
+        cv2.rectangle(overlay, (x1, y1), (x2, y2), BOX_COLOR, -1)
+        
+        # Draw border with rounded corners
+        corner_radius = 10
+        thickness = 2
+        
+        # Draw rounded corners
+        cv2.line(img, (x1 + corner_radius, y1), (x2 - corner_radius, y1), BOX_COLOR, thickness)
+        cv2.line(img, (x2, y1 + corner_radius), (x2, y2 - corner_radius), BOX_COLOR, thickness)
+        cv2.line(img, (x2 - corner_radius, y2), (x1 + corner_radius, y2), BOX_COLOR, thickness)
+        cv2.line(img, (x1, y2 - corner_radius), (x1, y1 + corner_radius), BOX_COLOR, thickness)
+        
+        cv2.ellipse(img, (x1 + corner_radius, y1 + corner_radius), (corner_radius, corner_radius), 180, 0, 90, BOX_COLOR, thickness)
+        cv2.ellipse(img, (x2 - corner_radius, y1 + corner_radius), (corner_radius, corner_radius), 270, 0, 90, BOX_COLOR, thickness)
+        cv2.ellipse(img, (x2 - corner_radius, y2 - corner_radius), (corner_radius, corner_radius), 0, 0, 90, BOX_COLOR, thickness)
+        cv2.ellipse(img, (x1 + corner_radius, y2 - corner_radius), (corner_radius, corner_radius), 90, 0, 90, BOX_COLOR, thickness)
+
+        # Add modern confidence label
+        label_bg_color = BOX_COLOR
+        text = f'{conf:.2f}'
+        text_size = cv2.getTextSize(text, FONT, 0.6, 2)[0]
+        
+        # Draw label background
+        cv2.rectangle(img, 
+                     (x1, y1 - text_size[1] - 10), 
+                     (x1 + text_size[0] + 10, y1), 
+                     label_bg_color, -1)
+                     
+        # Add text
+        cv2.putText(img, text, 
+                    (x1 + 5, y1 - 5), 
+                    FONT, 0.6, TEXT_COLOR, 2)
+
+    # Blend overlay with original image
+    img = cv2.addWeighted(overlay, OVERLAY_ALPHA, img, 1 - OVERLAY_ALPHA, 0)
+    
     return img
 
 def process_yolo_predictions(image_path):
-    """Run YOLO model and process predictions."""
-    # with threshold 
-    # results = model.predict(source=image_path, imgsz=640, conf=0.20)
-    # without threshold 
-    results = model.predict(source=image_path, imgsz=640, conf=0.20)
+    """Run YOLO model with modern visualization."""
+    results = model.predict(source=image_path, imgsz=640, conf=0.25)  # Added confidence threshold
     detections = results[0].boxes
     
-    # Draw predictions on image
     annotated_image = draw_predictions(image_path, detections)
     annotated_path = "temp_predicted.jpg"
     cv2.imwrite(annotated_path, annotated_image)
     
-    # Upload predicted image to Cloudinary
     predicted_url = cloudinary.uploader.upload(
         annotated_path,
-        folder="predicted-images"
+        folder="predicted-images",
+        quality="auto:best",  # Optimized quality
+        fetch_format="auto"   # Auto format optimization
     )['secure_url']
     
-    # Clean up temporary files
     os.remove(annotated_path)
     
-    # Extract bounding boxes
-    boxes = []
-    for box in detections:
-        x1, y1, x2, y2 = map(float, box.xyxy[0].cpu().numpy())
-        conf = float(box.conf[0].cpu().numpy())
-        boxes.append({
-            'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2,
-            'confidence': conf
-        })
+    boxes = [{
+        'x1': float(box.xyxy[0][0].cpu().numpy()),
+        'y1': float(box.xyxy[0][1].cpu().numpy()),
+        'x2': float(box.xyxy[0][2].cpu().numpy()),
+        'y2': float(box.xyxy[0][3].cpu().numpy()),
+        'confidence': float(box.conf[0].cpu().numpy())
+    } for box in detections]
     
-    acne_count = len(detections)
-    confidence_scores = [float(box.conf[0].cpu().numpy()) for box in detections]
-    avg_confidence = np.mean(confidence_scores) if confidence_scores else 0.0
-    
-    return acne_count, avg_confidence, boxes, predicted_url
+    return (len(detections), 
+            np.mean([b['confidence'] for b in boxes]) if boxes else 0.0,
+            boxes, 
+            predicted_url)
 
 @app.post("/predict")
 async def predict_skin_condition(request: ImageRequest):
