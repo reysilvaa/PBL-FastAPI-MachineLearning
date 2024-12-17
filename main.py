@@ -91,6 +91,7 @@ def process_yolo_predictions(image_path):
         annotated_path,
         folder="predicted-images",
         quality="auto:best",  # Optimized quality
+        timeout=120,  # Set the timeout to a higher value (e.g., 120 seconds)
         fetch_format="auto"   # Auto format optimization
     )['secure_url']
     
